@@ -92,7 +92,8 @@ async function arofloGet(query) {
 // WEBHOOK — validate shared secret
 // ================================================================
 function validateSecret(req, res) {
-  if (req.headers["x-secret-key"] !== process.env.SECRET_KEY) {
+  const key = req.headers["x-secret-key"] || req.query.key;
+  if (key !== process.env.SECRET_KEY) {
     res.status(401).json({ error: "Unauthorized" });
     return false;
   }
