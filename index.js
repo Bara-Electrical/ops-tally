@@ -260,7 +260,7 @@ async function postDailySummary() {
 
   const closedLine = closedJobs !== null ? String(closedJobs) : "unavailable";
 
-  const html = [
+  const summary = [
     `<p><strong>📊 Daily Ops Summary — ${formatDateLabel(from, to)}</strong></p>`,
     `<p><strong>Invoices</strong><br>${invoiceLines || "None"}</p>`,
     `<p><strong>Total invoices - ${invoices.totalCount}</strong><br>${formatCurrency(invoices.totalAmount)}</p>`,
@@ -268,6 +268,8 @@ async function postDailySummary() {
     `<p><strong>Total quotes - ${quotes.totalCount}</strong></p>`,
     `<p><strong>Total closed jobs - ${closedLine}</strong></p>`,
   ].join("\n");
+
+  const html = `<!-- START -->\n${summary}\n<!-- END -->`;
 
   const res = await graphFetch(`/users/${SUMMARY_SENDER}/sendMail`, {
     method: "POST",
