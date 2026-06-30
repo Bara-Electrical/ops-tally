@@ -12,7 +12,7 @@ app.use(express.json());
 const REQUIRED_ENV = [
   "GRAPH_TENANT_ID", "GRAPH_CLIENT_ID", "GRAPH_CLIENT_SECRET",
   "AIRTABLE_API_KEY", "AIRTABLE_BASE_ID",
-  "AROFLO_ORG", "AROFLO_USER", "AROFLO_PASS",
+  "ORGENCODED", "UENCODED", "PENCODED",
   "SECRET_KEY",
 ];
 for (const key of REQUIRED_ENV) {
@@ -70,8 +70,8 @@ async function graphFetch(path, options = {}) {
 function arofloAuthHeader() {
   const ts  = new Date().toUTCString();
   const sig = crypto.createHmac("sha1",
-    Buffer.from(process.env.AROFLO_PASS, "base64")
-  ).update(process.env.AROFLO_USER + ts).digest("base64");
+    Buffer.from(process.env.PENCODED, "base64")
+  ).update(process.env.UENCODED + ts).digest("base64");
   return {
     Authentication: `HMAC ${sig}`,
     afdatetimeutc:  ts,
@@ -80,7 +80,7 @@ function arofloAuthHeader() {
 }
 
 async function arofloGet(query) {
-  const res  = await fetch(`https://api.aroflo.com/?${query}&org=${process.env.AROFLO_ORG}`, {
+  const res  = await fetch(`https://api.aroflo.com/?${query}&org=${process.env.ORGENCODED}`, {
     headers: arofloAuthHeader(),
   });
   const data = await res.json();
