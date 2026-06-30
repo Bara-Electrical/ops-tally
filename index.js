@@ -19,8 +19,8 @@ for (const key of REQUIRED_ENV) {
   if (!process.env[key]) { console.error(`Missing env var: ${key}`); process.exit(1); }
 }
 
-const TEAMS_TEAM_ID    = "09353200-8046-4356-ae2f-2af74eb5a378";
-const TEAMS_CHANNEL_ID = "19:NOuOBjEljSlXLjVe18oSlH7Z26QLFYNq3PICZrB3Fi01@thread.tacv2";
+const SUMMARY_RECIPIENT = "brandon.roberts@baraelectrical.com.au";
+const SUMMARY_SENDER    = "workorders@baraelectrical.com.au";
 
 const airtableBase = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
@@ -269,16 +269,23 @@ async function postDailySummary() {
     `<p><strong>Total closed jobs - ${closedLine}</strong></p>`,
   ].join("\n");
 
-  const res = await graphFetch(
-    `/teams/${TEAMS_TEAM_ID}/channels/${encodeURIComponent(TEAMS_CHANNEL_ID)}/messages`,
-    { method: "POST", body: JSON.stringify({ body: { contentType: "html", content: html } }) }
-  );
+  const res = await graphFetch(`/users/${SUMMARY_SENDER}/sendMail`, {
+    method: "POST",
+    body: JSON.stringify({
+      message: {
+        subject:      `Daily Ops Summary — ${formatDateLabel(from, to)}`,
+        body:         { contentType: "HTML", content: html },
+        toRecipients: [{ emailAddress: { address: SUMMARY_RECIPIENT } }],
+      },
+      saveToSentItems: false,
+    }),
+  });
 
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(`Teams post failed: ${JSON.stringify(err)}`);
+    throw new Error(`Email send failed: ${JSON.stringify(err)}`);
   }
-  console.log("Summary posted to Teams");
+  console.log("Summary emailed to", SUMMARY_RECIPIENT);
 }
 
 // ================================================================
