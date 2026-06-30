@@ -269,7 +269,7 @@ async function postDailySummary() {
     `<p><strong>Total closed jobs - ${closedLine}</strong></p>`,
   ].join("\n");
 
-  const html = `<!-- START -->\n${summary}\n<!-- END -->`;
+  const html = `OPSSTART\n${summary}\nOPSEND`;
 
   const res = await graphFetch(`/users/${SUMMARY_SENDER}/sendMail`, {
     method: "POST",
