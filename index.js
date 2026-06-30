@@ -251,33 +251,24 @@ async function postDailySummary() {
   const invoiceLines = Object.entries(invoices.byPerson)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([p, { count }]) => `${p} - ${count}`)
-    .join("\n");
+    .join("<br>");
 
   const quoteLines = Object.entries(quotes.byPerson)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([p, count]) => `${p} - ${count}`)
-    .join("\n");
+    .join("<br>");
 
   const closedLine = closedJobs !== null ? String(closedJobs) : "unavailable";
 
-  const plainText = [
-    `📊 Daily Ops Summary — ${formatDateLabel(from, to)}`,
-    ``,
-    `Invoices`,
-    invoiceLines || "None",
-    ``,
-    `Total invoices - ${invoices.totalCount}`,
-    formatCurrency(invoices.totalAmount),
-    ``,
-    `Quotes`,
-    quoteLines || "None",
-    ``,
-    `Total quotes - ${quotes.totalCount}`,
-    ``,
-    `Total closed jobs - ${closedLine}`,
-  ].join("\n");
+  const summary =
+    `<p><b>📊 Daily Ops Summary — ${formatDateLabel(from, to)}</b></p>` +
+    `<p><b>Invoices</b><br>${invoiceLines || "None"}<br><br>` +
+    `<b>Total invoices - ${invoices.totalCount}</b><br>${formatCurrency(invoices.totalAmount)}</p>` +
+    `<p><b>Quotes</b><br>${quoteLines || "None"}<br><br>` +
+    `<b>Total quotes - ${quotes.totalCount}</b></p>` +
+    `<p><b>Total closed jobs - ${closedLine}</b></p>`;
 
-  const html = `OPSSTART\n${plainText}\nOPSEND`;
+  const html = `OPSSTART${summary}OPSEND`;
 
   const res = await graphFetch(`/users/${SUMMARY_SENDER}/sendMail`, {
     method: "POST",
