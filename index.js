@@ -2,6 +2,7 @@ import express from "express";
 import Airtable from "airtable";
 import cron from "node-cron";
 import crypto from "crypto";
+import { BotFrameworkAdapter } from "botbuilder";
 
 const app = express();
 app.use(express.json());
@@ -14,15 +15,38 @@ const REQUIRED_ENV = [
   "AIRTABLE_API_KEY", "AIRTABLE_BASE_ID",
   "ORGENCODED", "UENCODED", "PENCODED",
   "SECRET_KEY",
+  "TEAMS_TEAM_ID", "TEAMS_CHANNEL_ID",
 ];
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) { console.error(`Missing env var: ${key}`); process.exit(1); }
 }
 
-const SUMMARY_RECIPIENT = "brandon.roberts@baraelectrical.com.au";
-const SUMMARY_SENDER    = "workorders@baraelectrical.com.au";
-
 const airtableBase = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
+
+// ================================================================
+// BOT FRAMEWORK
+// ================================================================
+const adapter = new BotFrameworkAdapter({
+  appId:       process.env.GRAPH_CLIENT_ID,
+  appPassword: process.env.GRAPH_CLIENT_SECRET,
+});
+
+let savedConversationReference = null;
+
+app.post("/api/messages", (req, res) => {
+  adapter.processActivity(req, res, async (context) => {
+    if (context.activity.type === "conversationUpdate") {
+      savedConversationReference = {
+        ...context.activity,
+        serviceUrl:   context.activity.serviceUrl,
+        conversation: context.activity.conversation,
+        bot:          context.activity.recipient,
+        channelId:    context.activity.channelId,
+      };
+      console.log("Conversation reference saved from Teams install");
+    }
+  });
+});
 
 // ================================================================
 // GRAPH API
@@ -260,33 +284,22 @@ async function postDailySummary() {
 
   const closedLine = closedJobs !== null ? String(closedJobs) : "unavailable";
 
-  const summary =
-    `<p><b>📊 Daily Ops Summary — ${formatDateLabel(from, to)}</b></p>` +
-    `<p><b>Invoices</b><br>${invoiceLines || "None"}<br><br>` +
-    `<b>Total invoices - ${invoices.totalCount}</b><br>${formatCurrency(invoices.totalAmount)}</p>` +
-    `<p><b>Quotes</b><br>${quoteLines || "None"}<br><br>` +
-    `<b>Total quotes - ${quotes.totalCount}</b></p>` +
-    `<p><b>Total closed jobs - ${closedLine}</b></p>`;
+  const message =
+    `**📊 Daily Ops Summary — ${formatDateLabel(from, to)}**\n\n` +
+    `**Invoices**\n${invoiceLines.replace(/<br>/g, "\n") || "None"}\n\n` +
+    `**Total invoices - ${invoices.totalCount}** | ${formatCurrency(invoices.totalAmount)}\n\n` +
+    `**Quotes**\n${quoteLines.replace(/<br>/g, "\n") || "None"}\n\n` +
+    `**Total quotes - ${quotes.totalCount}**\n\n` +
+    `**Total closed jobs - ${closedLine}**`;
 
-  const html = `OPSSTART${summary}OPSEND`;
-
-  const res = await graphFetch(`/users/${SUMMARY_SENDER}/sendMail`, {
-    method: "POST",
-    body: JSON.stringify({
-      message: {
-        subject:      `Daily Ops Summary — ${formatDateLabel(from, to)}`,
-        body:         { contentType: "HTML", content: html },
-        toRecipients: [{ emailAddress: { address: SUMMARY_RECIPIENT } }],
-      },
-      saveToSentItems: false,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(`Email send failed: ${JSON.stringify(err)}`);
+  if (!savedConversationReference) {
+    throw new Error("No conversation reference — bot not yet installed in Teams channel");
   }
-  console.log("Summary emailed to", SUMMARY_RECIPIENT);
+
+  await adapter.continueConversation(savedConversationReference, async (context) => {
+    await context.sendActivity(message);
+  });
+  console.log("Summary posted to Teams");
 }
 
 // ================================================================

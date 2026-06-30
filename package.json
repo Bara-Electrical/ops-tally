@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "airtable": "^0.12.2",
+    "botbuilder": "^4.23.3",
     "express": "^4.18.2",
     "node-cron": "^3.0.3"
   }
